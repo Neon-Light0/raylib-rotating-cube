@@ -1,10 +1,10 @@
-#include <fmt/core.h>
-#include <fmt/ranges.h>
 #include <raylib.h>
 #include <vector>
 #include <raymath.h>
 #include <thread>
 #include <array>
+#include <iostream>
+#include <limits.h>
 
 const int targetFPS = 30;
 int screenWidth = 800;
@@ -243,7 +243,6 @@ int main(int argc, char* argv[]) {
     } else if (std::string(argv[i]) == "--screenHeight"){
       screenHeight = std::stoi(argv[++i]);
     } else {
-      fmt::print("Unknown argument: {}\n", argv[i]);
       return 1;
     }
   }
