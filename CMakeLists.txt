@@ -1,13 +1,12 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 4.2.3)
 
-# Set Clang as the compiler
-set(CMAKE_CXX_COMPILER clang++)
-set(CMAKE_C_COMPILER clang)
+set(CMAKE_CXX_COMPILER g++)
+set(CMAKE_C_COMPILER gcc)
 
 # Set default build type if not specified
-if(NOT CMAKE_BUILD_TYPE)
+#if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
+#endif()
 
 # Configure build types
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -Wall -Wextra")
@@ -46,12 +45,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add include directories
 include_directories(${CMAKE_SOURCE_DIR}/libs/raylib/include)
-include_directories(${CMAKE_SOURCE_DIR}/libs/fmt/include)
 include_directories(${CMAKE_SOURCE_DIR}/includes)
 
 # Add library directories
 link_directories(${CMAKE_SOURCE_DIR}/libs/raylib/lib)
-link_directories(${CMAKE_SOURCE_DIR}/libs/fmt/lib)
 
 # Add executable
 add_executable(${PROJECT_NAME} 
@@ -59,7 +56,13 @@ add_executable(${PROJECT_NAME}
 )
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} 
-    raylib
-    fmt
-)
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} 
+        raylib
+        winmm  
+    )
+else()
+    target_link_libraries(${PROJECT_NAME} 
+        raylib
+    )
+endif()
