@@ -21,43 +21,177 @@ std::array<double, 3> cubeRotation = {0.0, 0.0, 0.0};
 std::vector<std::vector<char>> pixelBuffer(worldHeight, std::vector<char>(worldWidth, ' '));
 std::vector<std::vector<int>> zBuffer(worldHeight, std::vector<int>(worldWidth, INT_MAX));
 
-void rotate(int x, int y, int z, float angleX, float angleY, float angleZ, int &outX, int &outY, int &outZ){
-  // Rotation around X axis
-  float cosX = cos(angleX);
-  float sinX = sin(angleX);
-  int y1 = static_cast<int>(y * cosX - z * sinX);
-  int z1 = static_cast<int>(y * sinX + z * cosX);
+enum class Surface {
+  FRONT,
+  BACK,
+  LEFT,
+  RIGHT,
+  TOP,
+  BOTTOM
+};
 
-  // Rotation around Y axis
-  float cosY = cos(angleY);
-  float sinY = sin(angleY);
-  int x2 = static_cast<int>(x * cosY + z1 * sinY);
-  int z2 = static_cast<int>(-x * sinY + z1 * cosY);
+struct Cube{
+  std::array<int, 3> pos = {worldCenterX, worldCenterY, 0};
+  std::array<double, 3> angles = {0.0, 0.0, 0.0};
+  int width = 30;
 
-  // Rotation around Z axis
-  float cosZ = cos(angleZ);
-  float sinZ = sin(angleZ);
-  outX = static_cast<int>(x2 * cosZ - y1 * sinZ);
-  outY = static_cast<int>(x2 * sinZ + y1 * cosZ);
-  outZ = z2;
-}
-
-void drawCube(){
-  for (int x = -cubeWidth/2; x < cubeWidth/2; x++){
-    for (int y = -cubeWidth/2; y < cubeWidth/2; y++){
-      for (int z = -cubeWidth/2; z < cubeWidth/2; z++){
-        z = cubeWidth/2 - 1;  // Draw only front face for simplicity
-        int rotatedX, rotatedY, rotatedZ;
-        rotate(x, y, z, cubeRotation[0], cubeRotation[1], cubeRotation[2], rotatedX, rotatedY, rotatedZ);
-        int screenX = worldCenterX + rotatedX;
-        int screenY = worldCenterY + rotatedY;
-        if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
-          pixelBuffer[screenY][screenX] = '#';
-        }
-      }
-    }
+  void rotate(double angleX, double angleY, double angleZ){
+    angles[0] = fmod(angles[0] + angleX, 2 * M_PI);
+    angles[1] = fmod(angles[1] + angleY, 2 * M_PI);
+    angles[2] = fmod(angles[2] + angleZ, 2 * M_PI);
   }
-}
+
+  std::array<int, 3> getVertices(float x, float y, float z){
+    std::array<int, 3> vertices;    
+    double angleX = angles[0];
+    double angleY = angles[1];
+    double angleZ = angles[2];
+
+    // Rotation around X axis
+    double cosX = cos(angleX);
+    double sinX = sin(angleX);
+    double y1 = y * cosX - z * sinX;
+    double z1 = y * sinX + z * cosX;
+
+    // Rotation around Y axis
+    double cosY = cos(angleY);
+    double sinY = sin(angleY);
+    double x2 = x * cosY + z1 * sinY;
+    double z2 = -x * sinY + z1 * cosY;
+
+    // Rotation around Z axis
+    double cosZ = cos(angleZ);
+    double sinZ = sin(angleZ);
+    vertices[0] = static_cast<int>(std::round(x2 * cosZ - y1 * sinZ));
+    vertices[1] = static_cast<int>(std::round(x2 * sinZ + y1 * cosZ));
+    vertices[2] = static_cast<int>(std::round(z2));
+    return vertices;
+  }
+
+  void drawSurface(Surface surface){
+    switch (surface){
+      case Surface::FRONT:
+        for (float x = -width/2; x < width/2; x+=0.5){
+          for (float y = -width/2; y < width/2; y+=0.5){
+            float z = -width/2 - 1;
+            auto [rotatedX, rotatedY, rotatedZ] = getVertices(x, y, z);
+            int screenX = worldCenterX + rotatedX;
+            int screenY = worldCenterY + rotatedY;
+          
+            if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
+              if (zBuffer[screenY][screenX] > rotatedZ){
+                zBuffer[screenY][screenX] = rotatedZ;
+                pixelBuffer[screenY][screenX] = 'F';
+              }
+            }
+          }
+        }
+
+        break;
+      case Surface::BACK:
+        for (float x = -width/2; x < width/2; x+=0.5){
+          for (float y = -width/2; y < width/2; y+=0.5){
+            float z = width/2 - 1;
+            auto [rotatedX, rotatedY, rotatedZ] = getVertices(x, y, z);
+            int screenX = worldCenterX + rotatedX;
+            int screenY = worldCenterY + rotatedY;
+
+            if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
+              if (zBuffer[screenY][screenX] > rotatedZ){
+                zBuffer[screenY][screenX] = rotatedZ;
+                pixelBuffer[screenY][screenX] = 'B';
+              }
+            }
+          }
+        }
+
+        break;
+      case Surface::LEFT:
+        for (float z = -width/2; z < width/2; z+=0.5){
+          for (float y = -width/2; y < width/2; y+=0.5){
+            float x = -width/2 - 1;
+            auto [rotatedX, rotatedY, rotatedZ] = getVertices(x, y, z);
+            int screenX = worldCenterX + rotatedX;
+            int screenY = worldCenterY + rotatedY;
+
+            if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
+              if (zBuffer[screenY][screenX] > rotatedZ){
+                zBuffer[screenY][screenX] = rotatedZ;
+                pixelBuffer[screenY][screenX] = 'L';
+              }
+            }
+          }
+        }
+
+        break;
+      case Surface::RIGHT:
+        for (float z = -width/2; z < width/2; z+=0.5){
+          for (float y = -width/2; y < width/2; y+=0.5){
+            float x = width/2 - 1;
+            auto [rotatedX, rotatedY, rotatedZ] = getVertices(x, y, z);
+            int screenX = worldCenterX + rotatedX;
+            int screenY = worldCenterY + rotatedY;
+
+            if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
+              if (zBuffer[screenY][screenX] > rotatedZ){
+                zBuffer[screenY][screenX] = rotatedZ;
+                pixelBuffer[screenY][screenX] = 'R';
+              }
+            }
+          }
+        }
+
+        break;
+      case Surface::TOP:
+        // Similar implementation for TOP surface
+        for (float x = -width/2; x < width/2; x+=0.5){
+          for (float z = -width/2; z < width/2; z+=0.5){
+            float y = width/2 - 1;
+            auto [rotatedX, rotatedY, rotatedZ] = getVertices(x, y, z);
+            int screenX = worldCenterX + rotatedX;
+            int screenY = worldCenterY + rotatedY;
+
+            if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
+              if (zBuffer[screenY][screenX] > rotatedZ){
+                zBuffer[screenY][screenX] = rotatedZ;
+                pixelBuffer[screenY][screenX] = 'T';
+              }
+            }
+          }
+        }
+
+        break;
+      case Surface::BOTTOM:
+        // Similar implementation for BOTTOM surface
+        for (float x = -width/2; x < width/2; x+=0.5){
+          for (float z = -width/2; z < width/2; z+=0.5){
+            float y = -width/2 - 1;
+            auto [rotatedX, rotatedY, rotatedZ] = getVertices(x, y, z);
+            int screenX = worldCenterX + rotatedX;
+            int screenY = worldCenterY + rotatedY;
+
+            if (screenX >= 0 && screenX < worldWidth && screenY >= 0 && screenY < worldHeight){
+              if (zBuffer[screenY][screenX] > rotatedZ){
+                zBuffer[screenY][screenX] = rotatedZ;
+                pixelBuffer[screenY][screenX] = 'B';
+              }
+            }
+          }
+        }
+
+        break;
+    }  // Implementation of surface drawing
+  }
+
+  void drawCube(){
+    drawSurface(Surface::FRONT);
+    drawSurface(Surface::BACK);
+    drawSurface(Surface::TOP);
+    drawSurface(Surface::BOTTOM);
+    drawSurface(Surface::LEFT);
+    drawSurface(Surface::RIGHT);  // Implementation of cube drawing
+  }
+};
 
 void clearBuffers() { 
   for (int i = 0; i < worldHeight; i++){
@@ -82,6 +216,7 @@ void drawBuffer(){
 void run() {
   InitWindow(screenWidth, screenHeight, "Rotating Cube");
   SetTargetFPS(targetFPS);
+  Cube cube1;
 
   // Main loop
   while (!WindowShouldClose()){  // Detect window close button or ESC key
@@ -90,14 +225,11 @@ void run() {
 
     ClearBackground(ORANGE);
     clearBuffers();
-    cubeRotation[0] = fmod(cubeRotation[0] + 0.03,  2 * M_PI);
-    cubeRotation[1] = fmod(cubeRotation[1] + 0.00,  2 * M_PI);
-    cubeRotation[2] = fmod(cubeRotation[2] + 0.00,  2 * M_PI);
 
-    drawCube();
-    drawBuffer();
+    cube1.rotate(0.01, 0.01, 0.01);
+    cube1.drawCube();
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<std::size_t>(1000/60.0)));
+    drawBuffer();  //std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<std::size_t>(1000/60.0)));
     EndDrawing();
   }
 
